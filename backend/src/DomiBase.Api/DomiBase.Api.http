@@ -1,0 +1,24 @@
+@DomiBase.Api_HostAddress = http://localhost:5080
+@AdminToken = replace-with-your-local-admin-token
+
+### Liveness
+GET {{DomiBase.Api_HostAddress}}/health
+Accept: application/json
+
+### Readiness (checks the control database)
+GET {{DomiBase.Api_HostAddress}}/health/ready
+Accept: application/json
+
+### Control Plane (requires the admin token; 501 until Phase 3)
+GET {{DomiBase.Api_HostAddress}}/api/v1/projects
+Accept: application/json
+X-DomiBase-Admin-Token: {{AdminToken}}
+
+### Control Plane without token (expects 401)
+GET {{DomiBase.Api_HostAddress}}/api/v1/projects
+Accept: application/json
+
+### Runtime Plane (501 until Phase 4)
+GET {{DomiBase.Api_HostAddress}}/rest/v1/contactos
+Accept: application/json
+apikey: db_public_example

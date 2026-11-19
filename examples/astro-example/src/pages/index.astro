@@ -1,0 +1,479 @@
+---
+import Layout from "../layouts/Layout.astro";
+import {
+  CONTACT_ESTADOS,
+  apiUrl,
+  createContact,
+  deleteContact,
+  describeError,
+  listContacts,
+  primaryProject,
+  statusRoute,
+  updateContactEstado,
+  type ContactoEstado
+} from "../lib/domibase";
+
+export const prerender = false;
+
+interface FormValues {
+  nombre: string;
+  email: string;
+  estado: string;
+  notas: string;
+}
+
+interface Notice {
+  kind: "success" | "error" | "warning";
+  text: string;
+}
+
+const url = new URL(Astro.request.url);
+const successMessages: Record<string, string> = {
+  created: "Contacto creado desde Astro.",
+  updated: "Estado del contacto actualizado.",
+  deleted: "Contacto eliminado."
+};
+const errorMessages: Record<string, string> = {
+  invalid: "La solicitud no era válida.",
+  notfound: "El contacto ya no existe.",
+  not_allowed: "El proyecto o la política RLS no permiten esa operación.",
+  unavailable: "La API de datos no está disponible en este momento.",
+  configuration: "La configuración del servidor no es válida.",
+  unexpected: "No se pudo completar la operación."
+};
+
+let notice: Notice | null = null;
+let formValues: FormValues = {
+  nombre: "",
+  email: "",
+  estado: "nuevo",
+  notas: ""
+};
+const fieldErrors: Record<string, string> = {};
+
+const okParam = url.searchParams.get("ok");
+if (okParam && successMessages[okParam]) {
+  notice = { kind: "success", text: successMessages[okParam] };
+}
+
+const errorParam = url.searchParams.get("error");
+if (errorParam) {
+  notice = {
+    kind: "error",
+    text: errorMessages[errorParam] ?? errorMessages.unexpected
+  };
+}
+
+if (Astro.request.method === "POST") {
+  let form: FormData | null = null;
+
+  try {
+    form = await Astro.request.formData();
+  } catch {
+    Astro.response.status = 400;
+    notice = { kind: "error", text: "El formulario no se pudo leer." };
+  }
+
+  if (form) {
+    const intent = formText(form, "intent");
+    const id = formText(form, "id").trim();
+
+    if (intent === "create") {
+      formValues = {
+        nombre: formText(form, "nombre").trim(),
+        email: formText(form, "email").trim(),
+        estado: formText(form, "estado"),
+        notas: formText(form, "notas").trim()
+      };
+
+      const errors = validateNewContact(formValues);
+      Object.assign(fieldErrors, errors);
+
+      if (Object.keys(fieldErrors).length > 0) {
+        Astro.response.status = 400;
+      } else {
+        try {
+          const result = await createContact({
+            nombre: formValues.nombre,
+            email: formValues.email.length > 0 ? formValues.email : null,
+            estado: formValues.estado as ContactoEstado,
+            notas: formValues.notas.length > 0 ? formValues.notas : null
+          });
+
+          if (result.error) {
+            Astro.response.status = 502;
+            fieldErrors.form = `No se pudo crear el contacto. ${describeError(result.error)}`;
+          } else {
+            return Astro.redirect("/?ok=created", 303);
+          }
+        } catch {
+          Astro.response.status = 500;
+          fieldErrors.form =
+            "No se pudo crear el contacto. Revisa la configuración del ejemplo.";
+        }
+      }
+    } else if (intent === "update") {
+      if (!isUuid(id)) {
+        return Astro.redirect("/?error=invalid", 303);
+      }
+
+      const estado = formText(form, "estado");
+      if (!isEstado(estado)) {
+        return Astro.redirect("/?error=invalid", 303);
+      }
+
+      try {
+        const result = await updateContactEstado(id, estado);
+        if (result.error) {
+          return Astro.redirect(`/?error=${statusRoute(result.error)}`, 303);
+        }
+
+        if ((result.data?.length ?? 0) === 0) {
+          return Astro.redirect("/?error=notfound", 303);
+        }
+
+        return Astro.redirect("/?ok=updated", 303);
+      } catch {
+        return Astro.redirect("/?error=unexpected", 303);
+      }
+    } else if (intent === "delete") {
+      if (!isUuid(id)) {
+        return Astro.redirect("/?error=invalid", 303);
+      }
+
+      try {
+        const result = await deleteContact(id);
+        if (result.error) {
+          return Astro.redirect(`/?error=${statusRoute(result.error)}`, 303);
+        }
+
+        if ((result.data?.length ?? 0) === 0) {
+          return Astro.redirect("/?error=notfound", 303);
+        }
+
+        return Astro.redirect("/?ok=deleted", 303);
+      } catch {
+        return Astro.redirect("/?error=unexpected", 303);
+      }
+    } else {
+      Astro.response.status = 400;
+      notice = { kind: "error", text: "Acción de formulario no reconocida." };
+    }
+  }
+}
+
+let contacts: Awaited<ReturnType<typeof listContacts>>["data"] = [];
+let listError: string | null = null;
+
+try {
+  const result = await listContacts("primary");
+  contacts = result.data ?? [];
+  listError = result.error ? describeError(result.error) : null;
+} catch {
+  listError = "No se pudo conectar con la API de datos.";
+}
+
+const hasFieldErrors = Object.keys(fieldErrors).length > 0;
+const countLabel = `${contacts?.length ?? 0} ${contacts?.length === 1 ? "contacto" : "contactos"}`;
+
+function formText(form: FormData, name: string): string {
+  const value = form.get(name);
+  return typeof value === "string" ? value : "";
+}
+
+function validateNewContact(values: FormValues): Record<string, string> {
+  const errors: Record<string, string> = {};
+
+  if (values.nombre.length === 0) {
+    errors.nombre = "Escribe un nombre.";
+  } else if (values.nombre.length > 120) {
+    errors.nombre = "El nombre admite como máximo 120 caracteres.";
+  }
+
+  if (values.email.length > 0) {
+    if (values.email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
+      errors.email = "Escribe un correo válido o deja el campo vacío.";
+    }
+  }
+
+  if (!isEstado(values.estado)) {
+    errors.estado = "Selecciona un estado válido.";
+  }
+
+  if (values.notas.length > 1000) {
+    errors.notas = "Las notas admiten como máximo 1000 caracteres.";
+  }
+
+  return errors;
+}
+
+function isEstado(value: string): value is ContactoEstado {
+  return (CONTACT_ESTADOS as readonly string[]).includes(value);
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
+function estadoLabel(value: string): string {
+  const labels: Record<string, string> = {
+    nuevo: "Nuevo",
+    contactado: "Contactado",
+    cliente: "Cliente",
+    archivado: "Archivado"
+  };
+
+  return labels[value] ?? value;
+}
+
+function estadoClass(value: string): string {
+  return `status status-${isEstado(value) ? value : "archivado"}`;
+}
+
+function formatDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  return new Intl.DateTimeFormat("es-ES", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(date);
+}
+---
+
+<Layout title="Contactos" current="inicio">
+  <header class="page-head">
+    <p class="eyebrow">Runtime Plane · CRUD real</p>
+    <h1>Contactos de {primaryProject.name}</h1>
+    <p class="lede">
+      Altas, cambios y bajas renderizadas en Astro con <code>@domibase/client</code> contra
+      PostgreSQL. La clave pública y la resolución del proyecto viven solo en el servidor; RLS
+      decide cada fila.
+    </p>
+    <div class="pill-row" aria-label="Configuración del ejemplo">
+      <span class="pill">{apiUrl}</span>
+      <span class="pill">RLS activo</span>
+      <span class="pill">SSR con adaptador Node</span>
+    </div>
+  </header>
+
+  <div class="stack">
+    {
+      notice && (
+        <div
+          class={`notice notice-${notice.kind}`}
+          role={notice.kind === "error" ? "alert" : "status"}
+        >
+          {notice.text}
+        </div>
+      )
+    }
+
+    {
+      hasFieldErrors && (
+        <div class="notice notice-error" role="alert">
+          <strong>Revisa el formulario.</strong>
+          <ul>
+            {Object.entries(fieldErrors).map(([field, message]) => (
+              <li>{field === "form" ? message : `${field}: ${message}`}</li>
+            ))}
+          </ul>
+        </div>
+      )
+    }
+
+    {
+      listError && (
+        <div class="notice notice-error" role="alert">
+          <strong>No se pudieron cargar los contactos.</strong>
+          <span>{listError}</span>
+        </div>
+      )
+    }
+
+    <div class="two-column">
+      <section class="card" aria-labelledby="nuevo-contacto-title">
+        <div>
+          <p class="eyebrow">INSERT</p>
+          <h2 id="nuevo-contacto-title">Nuevo contacto</h2>
+          <p class="hint">Los campos se validan en el navegador y de nuevo en el servidor.</p>
+        </div>
+
+        <form class="contact-form" method="POST" action="/">
+          <input type="hidden" name="intent" value="create" />
+
+          <div class="field">
+            <label for="nombre">Nombre</label>
+            <input
+              id="nombre"
+              name="nombre"
+              type="text"
+              required
+              maxlength="120"
+              autocomplete="name"
+              value={formValues.nombre}
+              aria-invalid={fieldErrors.nombre ? "true" : undefined}
+              aria-describedby={fieldErrors.nombre ? "nombre-error" : undefined}
+            />
+            {fieldErrors.nombre && <p class="field-error" id="nombre-error">{fieldErrors.nombre}</p>}
+          </div>
+
+          <div class="field">
+            <label for="email">Correo <span class="optional">(opcional)</span></label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              maxlength="254"
+              autocomplete="email"
+              value={formValues.email}
+              aria-invalid={fieldErrors.email ? "true" : undefined}
+              aria-describedby={fieldErrors.email ? "email-error" : undefined}
+            />
+            {fieldErrors.email && <p class="field-error" id="email-error">{fieldErrors.email}</p>}
+          </div>
+
+          <div class="field">
+            <label for="estado">Estado</label>
+            <select id="estado" name="estado">
+              {
+                CONTACT_ESTADOS.map((estado) => (
+                  <option value={estado} selected={formValues.estado === estado}>
+                    {estadoLabel(estado)}
+                  </option>
+                ))
+              }
+            </select>
+            {fieldErrors.estado && <p class="field-error">{fieldErrors.estado}</p>}
+          </div>
+
+          <div class="field field-wide">
+            <label for="notas">Notas <span class="optional">(opcional)</span></label>
+            <textarea
+              id="notas"
+              name="notas"
+              maxlength="1000"
+              rows="3"
+              aria-invalid={fieldErrors.notas ? "true" : undefined}
+              aria-describedby={fieldErrors.notas ? "notas-error" : undefined}
+            >{formValues.notas}</textarea>
+            {fieldErrors.notas && <p class="field-error" id="notas-error">{fieldErrors.notas}</p>}
+          </div>
+
+          {fieldErrors.form && <p class="field-error field-wide" role="alert">{fieldErrors.form}</p>}
+
+          <div class="form-actions">
+            <button class="button button-primary" type="submit">Guardar contacto</button>
+            <span class="hint">Se ejecuta un INSERT con valores parametrizados.</span>
+          </div>
+        </form>
+      </section>
+
+      <aside class="card" aria-labelledby="como-funciona-title">
+        <h2 id="como-funciona-title">Qué demuestra</h2>
+        <ul class="aside-list">
+          <li>
+            <strong>CRUD desde Astro</strong>
+            <span>INSERT, SELECT, PATCH y DELETE con el SDK propio, sin SQL en la página.</span>
+          </li>
+          <li>
+            <strong>Autorización real</strong>
+            <span>La API key identifica el proyecto; los GRANT y las políticas RLS se aplican en PostgreSQL.</span>
+          </li>
+          <li>
+            <strong>Aislamiento y claves</strong>
+            <span>La página de diagnóstico prueba otro proyecto, una clave inválida y una revocada.</span>
+          </li>
+        </ul>
+        <a class="button" href="/diagnostico">Abrir diagnóstico</a>
+      </aside>
+    </div>
+
+    <section class="card" aria-labelledby="lista-contactos-title">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">SELECT</p>
+          <h2 id="lista-contactos-title">Contactos</h2>
+        </div>
+        <span class="count" role="status">{countLabel}</span>
+      </div>
+
+      {
+        contacts && contacts.length > 0 ? (
+          <div class="table-shell">
+            <table>
+              <caption>Contactos del proyecto, ordenados del más reciente al más antiguo.</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Nombre</th>
+                  <th scope="col" class="col-email">Correo</th>
+                  <th scope="col">Estado</th>
+                  <th scope="col" class="col-created">Creado</th>
+                  <th scope="col">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {contacts.map((contacto) => (
+                  <tr>
+                    <td>
+                      <strong>{contacto.nombre}</strong>
+                      {contacto.notas && <span class="row-note">{contacto.notas}</span>}
+                    </td>
+                    <td class="col-email row-email">{contacto.email ?? "—"}</td>
+                    <td>
+                      <span class={estadoClass(contacto.estado)}>{estadoLabel(contacto.estado)}</span>
+                    </td>
+                    <td class="col-created">
+                      <time datetime={contacto.created_at}>{formatDate(contacto.created_at)}</time>
+                    </td>
+                    <td>
+                      <div class="actions-cell">
+                        <form class="inline-form" method="POST" action="/">
+                          <input type="hidden" name="intent" value="update" />
+                          <input type="hidden" name="id" value={contacto.id} />
+                          <label class="visually-hidden" for={`estado-${contacto.id}`}>
+                            Nuevo estado para {contacto.nombre}
+                          </label>
+                          <select id={`estado-${contacto.id}`} name="estado">
+                            {CONTACT_ESTADOS.map((estado) => (
+                              <option value={estado} selected={contacto.estado === estado}>
+                                {estadoLabel(estado)}
+                              </option>
+                            ))}
+                          </select>
+                          <button class="button button-small" type="submit">Guardar</button>
+                        </form>
+
+                        <form
+                          class="inline-form"
+                          method="POST"
+                          action="/"
+                          data-confirm={`¿Eliminar a ${contacto.nombre}?`}
+                        >
+                          <input type="hidden" name="intent" value="delete" />
+                          <input type="hidden" name="id" value={contacto.id} />
+                          <button class="button button-small button-danger" type="submit">
+                            Eliminar
+                          </button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div class="empty">
+            <strong>Sin contactos todavía</strong>
+            <span>Usa el formulario para crear el primero con el SDK.</span>
+          </div>
+        )
+      }
+    </section>
+  </div>
+</Layout>

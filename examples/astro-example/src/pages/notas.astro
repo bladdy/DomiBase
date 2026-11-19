@@ -1,0 +1,205 @@
+---
+import Layout from "../layouts/Layout.astro";
+import {
+  AUTH_COOKIES,
+  createNote,
+  describeError,
+  listNotes,
+  readSessionFromCookies,
+  type Nota
+} from "../lib/domibase";
+
+export const prerender = false;
+
+interface Notice {
+  kind: "success" | "error";
+  text: string;
+}
+
+let notice: Notice | null = null;
+let formValues = { titulo: "", contenido: "" };
+const fieldErrors: Record<string, string> = {};
+
+const session = readSessionFromCookies(Astro.cookies);
+if (!session) {
+  return Astro.redirect("/login", 303);
+}
+
+if (Astro.request.method === "POST") {
+  let form: FormData | null = null;
+
+  try {
+    form = await Astro.request.formData();
+  } catch {
+    Astro.response.status = 400;
+    notice = { kind: "error", text: "El formulario no se pudo leer." };
+  }
+
+  if (form) {
+    const intent = formText(form, "intent");
+
+    if (intent === "logout") {
+      for (const name of Object.values(AUTH_COOKIES)) {
+        Astro.cookies.delete(name, { path: "/" });
+      }
+      return Astro.redirect("/login", 303);
+    }
+
+    if (intent === "create") {
+      formValues = {
+        titulo: formText(form, "titulo").trim(),
+        contenido: formText(form, "contenido").trim()
+      };
+
+      if (formValues.titulo.length === 0) {
+        fieldErrors.titulo = "Escribe un título.";
+      }
+
+      if (Object.keys(fieldErrors).length > 0) {
+        Astro.response.status = 400;
+      } else {
+        const result = await createNote(session, {
+          titulo: formValues.titulo,
+          contenido: formValues.contenido.length > 0 ? formValues.contenido : null
+        });
+
+        if (result.error) {
+          Astro.response.status = 502;
+          notice = { kind: "error", text: describeError(result.error) };
+        } else {
+          return Astro.redirect("/notas?ok=created", 303);
+        }
+      }
+    }
+  }
+}
+
+const okParam = Astro.url.searchParams.get("ok");
+if (okParam === "created") {
+  notice = { kind: "success", text: "Nota creada. Solo tú puedes verla." };
+}
+
+let notes: Nota[] = [];
+let listError: string | null = null;
+
+try {
+  const result = await listNotes(session);
+  notes = (result.data ?? []) as Nota[];
+  listError = result.error ? describeError(result.error) : null;
+} catch {
+  listError = "No se pudieron cargar las notas.";
+}
+
+function formText(form: FormData, name: string): string {
+  const value = form.get(name);
+  return typeof value === "string" ? value : "";
+}
+
+function formatDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+  return new Intl.DateTimeFormat("es-ES", { dateStyle: "medium", timeStyle: "short" }).format(date);
+}
+---
+
+<Layout title="Notas privadas" current="inicio">
+  <header class="page-head">
+    <p class="eyebrow">Auth Plane · RLS con usuario autenticado</p>
+    <h1>Notas privadas</h1>
+    <p class="lede">
+      Estas filas viven en <code>public.notas</code> y las políticas RLS solo permiten que el
+      usuario autenticado vea sus propias notas. Sin Bearer, la tabla devuelve 0 filas.
+    </p>
+  </header>
+
+  <div class="stack">
+    {
+      notice && (
+        <div class={`notice notice-${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>
+          {notice.text}
+        </div>
+      )
+    }
+
+    {
+      listError && (
+        <div class="notice notice-error" role="alert">
+          <strong>No se pudieron cargar las notas.</strong>
+          <span>{listError}</span>
+        </div>
+      )
+    }
+
+    <section class="card" aria-labelledby="nueva-nota-title">
+      <p class="eyebrow">INSERT autenticado</p>
+      <h2 id="nueva-nota-title">Nueva nota privada</h2>
+      <form class="contact-form" method="POST" action="/notas">
+        <input type="hidden" name="intent" value="create" />
+        <div class="field field-wide">
+          <label for="titulo">Título</label>
+          <input id="titulo" name="titulo" type="text" maxlength="120" value={formValues.titulo} required />
+          {fieldErrors.titulo && <p class="field-error">{fieldErrors.titulo}</p>}
+        </div>
+        <div class="field field-wide">
+          <label for="contenido">Contenido</label>
+          <textarea id="contenido" name="contenido" maxlength="2000" rows="4">{formValues.contenido}</textarea>
+        </div>
+        <div class="form-actions">
+          <button class="button button-primary" type="submit">Guardar nota</button>
+          <span class="hint">La columna <code>owner_id</code> se resuelve server-side desde el JWT.</span>
+        </div>
+      </form>
+    </section>
+
+    <section class="card" aria-labelledby="lista-notas-title">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">SELECT autenticado</p>
+          <h2 id="lista-notas-title">Tus notas</h2>
+        </div>
+        <span class="count" role="status">{notes.length} {notes.length === 1 ? "nota" : "notas"}</span>
+      </div>
+
+      {
+        notes.length > 0 ? (
+          <div class="table-shell">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Título</th>
+                  <th scope="col">Contenido</th>
+                  <th scope="col" class="col-created">Creada</th>
+                </tr>
+              </thead>
+              <tbody>
+                {notes.map((nota) => (
+                  <tr>
+                    <td>
+                      <strong>{nota.titulo}</strong>
+                    </td>
+                    <td>{nota.contenido ?? "—"}</td>
+                    <td class="col-created">
+                      <time datetime={nota.created_at}>{formatDate(nota.created_at)}</time>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div class="empty">
+            <strong>Sin notas todavía</strong>
+            <span>Las notas que crees aparecerán aquí.</span>
+          </div>
+        )
+      }
+
+      <form class="inline-form" method="POST" action="/notas" style="margin-top: 1rem;">
+        <input type="hidden" name="intent" value="logout" />
+        <button class="button button-small" type="submit">Cerrar sesión</button>
+      </form>
+    </section>
+  </div>
+</Layout>

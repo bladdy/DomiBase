@@ -1,0 +1,315 @@
+---
+import { createClient } from "@domibase/client";
+import Layout from "../layouts/Layout.astro";
+import {
+  apiUrl,
+  describeError,
+  listContacts,
+  projectClient,
+  secondaryProject,
+  revokedProjectKey
+} from "../lib/domibase";
+
+export const prerender = false;
+
+type CheckStatus = "pass" | "fail" | "skip";
+
+interface Check {
+  id: string;
+  label: string;
+  status: CheckStatus;
+  detail: string;
+}
+
+const checks: Check[] = [];
+
+function add(id: string, label: string, status: CheckStatus, detail: string): void {
+  checks.push({ id, label, status, detail });
+}
+
+const primary = await listContacts("primary");
+add(
+  "primary-read",
+  "El proyecto principal responde por su clave pública",
+  primary.error ? "fail" : "pass",
+  primary.error
+    ? describeError(primary.error)
+    : `${primary.data?.length ?? 0} filas visibles para el rol anónimo.`
+);
+
+let secondary: Awaited<ReturnType<typeof listContacts>> | null = null;
+
+if (!secondaryProject) {
+  add(
+    "secondary-read",
+    "El segundo proyecto responde por su propia clave",
+    "skip",
+    "DOMIBASE_PROJECT_KEY_B no está configurada."
+  );
+} else {
+  try {
+    secondary = await listContacts("secondary");
+    add(
+      "secondary-read",
+      "El segundo proyecto responde por su propia clave",
+      secondary.error ? "fail" : "pass",
+      secondary.error
+        ? describeError(secondary.error)
+        : `${secondary.data?.length ?? 0} filas visibles en ${secondaryProject.name}.`
+    );
+  } catch {
+    add(
+      "secondary-read",
+      "El segundo proyecto responde por su propia clave",
+      "fail",
+      "No se pudo crear el cliente del segundo proyecto."
+    );
+  }
+}
+
+if (!secondary || primary.error || secondary.error) {
+  add(
+    "project-isolation",
+    "Los datos de un proyecto no aparecen en el otro",
+    "skip",
+    "Hace falta leer ambos proyectos correctamente."
+  );
+} else {
+  const emailsPrimary = new Set(
+    (primary.data ?? []).map((row) => row.email).filter((email): email is string => Boolean(email))
+  );
+  const emailsSecondary = new Set(
+    (secondary.data ?? [])
+      .map((row) => row.email)
+      .filter((email): email is string => Boolean(email))
+  );
+
+  if (emailsPrimary.size === 0 || emailsSecondary.size === 0) {
+    add(
+      "project-isolation",
+      "Los datos de un proyecto no aparecen en el otro",
+      "skip",
+      "Uno de los proyectos no tiene correos para comparar; ejecuta el script de demo."
+    );
+  } else {
+    let overlap = 0;
+    for (const email of emailsPrimary) {
+      if (emailsSecondary.has(email)) {
+        overlap += 1;
+      }
+    }
+
+    add(
+      "project-isolation",
+      "Los datos de un proyecto no aparecen en el otro",
+      overlap === 0 ? "pass" : "fail",
+      `${emailsPrimary.size} correos en el proyecto principal, ${emailsSecondary.size} en el segundo y ${overlap} en común.`
+    );
+  }
+}
+
+try {
+  const primaryClient = projectClient("primary");
+  if (!primaryClient) {
+    add("metadata-isolation", "La base de metadatos no es accesible desde Runtime", "skip", "Sin cliente principal.");
+  } else {
+    const metadata = await primaryClient.from("projects").select("id").limit(1);
+    const rejected =
+      metadata.error?.code === "TABLE_NOT_FOUND" || metadata.error?.status === 404;
+
+    add(
+      "metadata-isolation",
+      "La base de metadatos no es accesible desde Runtime",
+      rejected ? "pass" : "fail",
+      rejected
+        ? "El Runtime responde 404 TABLE_NOT_FOUND para tablas de control."
+        : `Respuesta inesperada: ${describeError(metadata.error)}`
+    );
+  }
+} catch {
+  add(
+    "metadata-isolation",
+    "La base de metadatos no es accesible desde Runtime",
+    "fail",
+    "No se pudo completar la comprobación."
+  );
+}
+
+try {
+  const invalid = createClient({
+    url: apiUrl,
+    projectKey: "db_public_invalid_phase06_demo_key"
+  });
+  const result = await invalid.from("contactos").select("id").limit(1);
+
+  add(
+    "invalid-key",
+    "Una clave pública inválida se rechaza",
+    result.error?.code === "INVALID_API_KEY" && result.error.status === 401 ? "pass" : "fail",
+    result.error
+      ? `${result.error.code} (HTTP ${result.error.status ?? "?"}).`
+      : "La API aceptó una clave inválida."
+  );
+} catch {
+  add(
+    "invalid-key",
+    "Una clave pública inválida se rechaza",
+    "fail",
+    "No se pudo construir la petición."
+  );
+}
+
+if (!revokedProjectKey) {
+  add(
+    "revoked-key",
+    "Una clave revocada se rechaza",
+    "skip",
+    "DOMIBASE_REVOKED_PROJECT_KEY no está configurada."
+  );
+} else {
+  try {
+    const revoked = createClient({ url: apiUrl, projectKey: revokedProjectKey });
+    const result = await revoked.from("contactos").select("id").limit(1);
+
+    add(
+      "revoked-key",
+      "Una clave revocada se rechaza",
+      result.error?.code === "INVALID_API_KEY" && result.error.status === 401 ? "pass" : "fail",
+      result.error
+        ? `${result.error.code} (HTTP ${result.error.status ?? "?"}).`
+        : "La API aceptó una clave revocada."
+    );
+  } catch {
+    add(
+      "revoked-key",
+      "Una clave revocada se rechaza",
+      "fail",
+      "No se pudo construir la petición."
+    );
+  }
+}
+
+try {
+  const response = await fetch(`${apiUrl}/rest/v1/contactos?select=id&limit=1`);
+  let body: unknown = null;
+
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+
+  const code =
+    typeof body === "object" && body !== null && "error" in body
+      ? (body as { error?: { code?: unknown } }).error?.code
+      : undefined;
+
+  add(
+    "missing-key",
+    "Una petición sin API key se rechaza",
+    response.status === 401 && code === "MISSING_API_KEY" ? "pass" : "fail",
+    `HTTP ${response.status} · ${typeof code === "string" ? code : "sin código"}`
+  );
+} catch {
+  add(
+    "missing-key",
+    "Una petición sin API key se rechaza",
+    "fail",
+    "No se pudo contactar con la API."
+  );
+}
+
+const passed = checks.filter((check) => check.status === "pass").length;
+const failed = checks.filter((check) => check.status === "fail").length;
+const skipped = checks.filter((check) => check.status === "skip").length;
+
+const badgeLabels: Record<CheckStatus, string> = {
+  pass: "OK",
+  fail: "Fallo",
+  skip: "Omitido"
+};
+---
+
+<Layout title="Diagnóstico" current="diagnostico">
+  <header class="page-head">
+    <p class="eyebrow">Verificación en vivo · server-side</p>
+    <h1>Diagnóstico de seguridad</h1>
+    <p class="lede">
+      Comprobaciones ejecutadas en el servidor de Astro con el SDK: lectura por proyecto,
+      aislamiento, rechazo de claves inválidas/revocadas/ausentes y bloqueo de la base de control.
+      Ninguna clave se imprime ni se envía al navegador.
+    </p>
+    <div class="pill-row" aria-label="Resumen">
+      <span class="pill">{apiUrl}</span>
+      <span class="pill">Sin credenciales administrativas en el cliente</span>
+    </div>
+  </header>
+
+  <div class="stack">
+    <div
+      class={`notice ${failed > 0 ? "notice-error" : skipped > 0 ? "notice-warning" : "notice-success"}`}
+      role="status"
+      data-summary
+    >
+      <strong>{failed === 0 ? "Comprobaciones completadas" : "Hay comprobaciones fallidas"}</strong>
+      <span>{passed} OK · {failed} fallos · {skipped} omitidas</span>
+    </div>
+
+    <section class="card" aria-labelledby="checks-title">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Runtime Plane</p>
+          <h2 id="checks-title">Resultados</h2>
+        </div>
+        <span class="count">Ejecutado ahora en el servidor</span>
+      </div>
+
+      <div class="check-list">
+        {
+          checks.map((check) => (
+            <article
+              class={`check check-${check.status}`}
+              data-check={check.id}
+              data-status={check.status}
+            >
+              <div class="check-head">
+                <strong>{check.label}</strong>
+                <span class="check-badge">{badgeLabels[check.status]}</span>
+              </div>
+              <p class="check-detail">{check.detail}</p>
+            </article>
+          ))
+        }
+      </div>
+    </section>
+
+    <div class="two-column">
+      <section class="card" aria-labelledby="lectura-title">
+        <h2 id="lectura-title">Cómo leer el resultado</h2>
+        <ul class="aside-list">
+          <li>
+            <strong>Dos bases PostgreSQL distintas</strong>
+            <span>La clave de cada proyecto resuelve su propia base; no existe un parámetro de proyecto en la URL.</span>
+          </li>
+          <li>
+            <strong>RLS y GRANT</strong>
+            <span>El Runtime entra como rol anónimo del proyecto y PostgreSQL decide qué filas y columnas puede tocar.</span>
+          </li>
+          <li>
+            <strong>Claves revocadas</strong>
+            <span>La revocación se comprueba en el servidor por hash; la clave completa solo se mostró al crearla.</span>
+          </li>
+        </ul>
+      </section>
+
+      <aside class="card" aria-labelledby="siguiente-title">
+        <h2 id="siguiente-title">Siguiente paso</h2>
+        <p class="hint">
+          Vuelve a la lista para crear, actualizar o eliminar un contacto. Cada acción hace una
+          petición real al Runtime y se refleja en PostgreSQL.
+        </p>
+        <a class="button button-primary" href="/">Ir a contactos</a>
+      </aside>
+    </div>
+  </div>
+</Layout>

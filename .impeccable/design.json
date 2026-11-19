@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-17T15:10:00Z",
+  "title": "Design System: DomiBase Admin",
+  "extensions": {
+    "colorMeta": {
+      "board-projects": {
+        "role": "primary",
+        "displayName": "Projects Indigo",
+        "tonalRamp": ["#e8eaf6", "#b9c0e6", "#7c88ce", "#2f3a8f", "#232b6d"]
+      },
+      "board-keys": {
+        "role": "primary",
+        "displayName": "Keys Amber",
+        "tonalRamp": ["#fbf0d6", "#edcf8f", "#c99b3f", "#8a5a00", "#674200"]
+      },
+      "board-buckets": {
+        "role": "primary",
+        "displayName": "Buckets Teal",
+        "tonalRamp": ["#dcefee", "#9bc9c6", "#4e8f8b", "#0f5f5c", "#0a4644"]
+      },
+      "board-functions": {
+        "role": "primary",
+        "displayName": "Functions Violet",
+        "tonalRamp": ["#ece2f1", "#c6add4", "#9973b0", "#5b2c76", "#432057"]
+      },
+      "board-schema": {
+        "role": "primary",
+        "displayName": "Schema Brick",
+        "tonalRamp": ["#f4e7e3", "#dfbab0", "#b67a68", "#7a3b2e", "#5c2b22"]
+      },
+      "board-sql": {
+        "role": "primary",
+        "displayName": "SQL Steel",
+        "tonalRamp": ["#e4edf4", "#b9d0e1", "#7ba3c3", "#1f4e79", "#163a5a"]
+      },
+      "board-extensions": {
+        "role": "primary",
+        "displayName": "Extensions Olive",
+        "tonalRamp": ["#eef0e3", "#d3dab5", "#9ea86a", "#5a6b25", "#414d1b"]
+      },
+      "board-migrations": {
+        "role": "primary",
+        "displayName": "Migrations Magenta",
+        "tonalRamp": ["#f5e8ee", "#e5bfd0", "#c27c9e", "#8c355e", "#682541"]
+      },
+      "paper": { "role": "neutral", "displayName": "Manual Paper" },
+      "acetate": { "role": "neutral", "displayName": "Acetate Leaf" },
+      "ink": { "role": "neutral", "displayName": "Binding Ink" },
+      "vermilion": { "role": "error", "displayName": "Errata Vermilion" }
+    },
+    "typographyMeta": {
+      "mono": { "displayName": "Machine Data", "purpose": "Identifiers, statuses, hashes, limits and dates." }
+    },
+    "shadows": [
+      {
+        "name": "leaf-cut",
+        "value": "3px 3px 0 rgba(0,0,0,0.28), 20px 28px 50px rgba(0,0,0,0.18)",
+        "purpose": "Acetate leaf on the division board."
+      },
+      {
+        "name": "gate",
+        "value": "6px 8px 0 rgba(0,0,0,0.3), 24px 30px 60px rgba(0,0,0,0.3)",
+        "purpose": "Access sheet."
+      },
+      {
+        "name": "dialog",
+        "value": "4px 6px 0 rgba(0,0,0,0.3)",
+        "purpose": "Raised confirmation dialog."
+      }
+    ],
+    "motion": [
+      {
+        "name": "hinge-step",
+        "value": "180ms steps(2, end)",
+        "purpose": "Single authored motion: leaf turn on section change."
+      }
+    ],
+    "breakpoints": [
+      { "name": "leaf-stack", "value": "720px" },
+      { "name": "horizontal-rail", "value": "860px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Constructive action inside the active division.",
+      "html": "<button class=\"ds-btn-primary\">Nuevo proyecto</button>",
+      "css": ".ds-btn-primary { background: #232b6d; color: #fff; border: 1px solid transparent; border-radius: 3px; padding: 0.65rem 1rem; min-height: 2.6rem; font: 600 16px ui-sans-serif, system-ui, sans-serif; cursor: pointer; box-shadow: 2px 2px 0 rgba(0,0,0,0.25); } .ds-btn-primary:hover { background: #2f3a8f; } .ds-btn-primary:focus-visible { outline: 3px solid #f5d76e; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary or selective action with a hairline outline.",
+      "html": "<button class=\"ds-btn-ghost\">Seleccionar</button>",
+      "css": ".ds-btn-ghost { background: transparent; color: #1b1c1e; border: 1px solid rgba(27,28,30,0.35); border-radius: 3px; padding: 0.65rem 1rem; min-height: 2.6rem; font: 600 16px ui-sans-serif, system-ui, sans-serif; cursor: pointer; } .ds-btn-ghost:hover { background: rgba(27,28,30,0.06); } .ds-btn-ghost:focus-visible { outline: 3px solid #f5d76e; outline-offset: 2px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive action, always after confirmation.",
+      "html": "<button class=\"ds-btn-danger\">Revocar definitivamente</button>",
+      "css": ".ds-btn-danger { background: #b3261e; color: #fff; border: 1px solid transparent; border-radius: 3px; padding: 0.65rem 1rem; min-height: 2.6rem; font: 600 16px ui-sans-serif, system-ui, sans-serif; cursor: pointer; } .ds-btn-danger:focus-visible { outline: 3px solid #f5d76e; outline-offset: 2px; }"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "description": "Text field with focused border tied to the division board.",
+      "html": "<label class=\"ds-field\"><span>Slug</span><input class=\"ds-input\" value=\"paneles-solares\" /></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 0.35rem; font: 700 0.75rem ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; } .ds-input { min-height: 2.6rem; padding: 0.6rem 0.75rem; border: 1px solid rgba(27,28,30,0.35); border-radius: 3px; background: #fffefb; color: #1b1c1e; font: 400 16px ui-sans-serif, system-ui, sans-serif; } .ds-input:focus-visible { outline: 3px solid #f5d76e; border-color: #232b6d; }"
+    },
+    {
+      "name": "Tab",
+      "kind": "nav",
+      "refersTo": "tab-active",
+      "description": "Stepped index tab; active tab extends into the desk.",
+      "html": "<button class=\"ds-tab ds-tab--active\" role=\"tab\" aria-selected=\"true\">Proyectos <span class=\"ds-tab-count\">2</span></button>",
+      "css": ".ds-tab { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 3.5rem; padding: 0.85rem 3rem 0.85rem 1.5rem; border: 0; border-radius: 0 6px 6px 0; background: rgba(255,255,255,0.08); color: #fbfaf5; font: 650 16px ui-sans-serif, system-ui, sans-serif; cursor: pointer; } .ds-tab--active { background: #2f3a8f; box-shadow: -4px 0 0 #fbfaf5; } .ds-tab-count { padding: 0.15rem 0.45rem; border-radius: 2px; background: rgba(0,0,0,0.24); font-family: ui-monospace, monospace; font-size: 0.78rem; } .ds-tab:focus-visible { outline: 3px solid #f5d76e; outline-offset: 2px; }"
+    },
+    {
+      "name": "Status Pill",
+      "kind": "chip",
+      "description": "Machine status in tabular monospace.",
+      "html": "<span class=\"ds-status ds-status--ready\"><span class=\"ds-status-mark\"></span>Ready</span>",
+      "css": ".ds-status { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.5rem; border-radius: 2px; background: #e8e6df; font: 400 0.74rem ui-monospace, monospace; font-variant-numeric: tabular-nums; } .ds-status-mark { width: 6px; height: 6px; border-radius: 50%; background: currentColor; } .ds-status--ready { background: #dcebdc; color: #1d5b2a; } .ds-status--failed { background: #b3261e; color: #fff; }"
+    },
+    {
+      "name": "Acetate Leaf",
+      "kind": "card",
+      "refersTo": "acetate-leaf",
+      "description": "Reading surface with binding holes and cut-edge shadow.",
+      "html": "<div class=\"ds-leaf\"><h2>Proyectos</h2><p>Estado real del provisioning.</p></div>",
+      "css": ".ds-leaf { position: relative; padding: 2rem 2.5rem; border: 1px solid rgba(27,28,30,0.2); border-radius: 2px 12px 12px 2px; background: rgba(250,249,245,0.92); box-shadow: 3px 3px 0 rgba(0,0,0,0.28), 20px 28px 50px rgba(0,0,0,0.18); color: #1b1c1e; } .ds-leaf::before { content: ''; position: absolute; top: 2.5rem; left: 14px; width: 11px; height: 11px; border-radius: 50%; background: #232b6d; box-shadow: 0 5.5rem 0 #232b6d, 0 11rem 0 #232b6d; opacity: .85; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "La mesa del manual abierto",
+    "overview": "Una consola de operación con la física de un manual encuadernado: pestañas como índice, tableros de color por división y hojas de acetato como superficie de lectura. Sin KPIs decorativos: cada pantalla muestra estado real y acciones consecuentes.",
+    "keyCharacteristics": [
+      "Raíl escalonado por división",
+      "Hoja de acetato con sombra de canto",
+      "Mono tabular para datos de máquina",
+      "Erratas en vermilión"
+    ],
+    "rules": [
+      {
+        "name": "The One Board Rule",
+        "body": "Solo el color de la división activa tiñe el escritorio.",
+        "section": "colors"
+      },
+      {
+        "name": "The Hinge Rule",
+        "body": "Un único movimiento: giro de hoja en dos fotogramas al cambiar de división.",
+        "section": "motion"
+      }
+    ],
+    "dos": [
+      "Conservar semántica de tabla en móvil",
+      "Mostrar el motivo de fallo del provisioning",
+      "Usar token verificado por la API"
+    ],
+    "donts": [
+      "Añadir kickers o tarjetas de iconos",
+      "Mostrar la clave completa fuera de su creación",
+      "Guardar el token en localStorage"
+    ]
+  }
+}

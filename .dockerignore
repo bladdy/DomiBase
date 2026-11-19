@@ -1,0 +1,23 @@
+# Build context exclusions for the future DomiBase API image.
+.git
+.gitignore
+.vs
+.idea
+.vscode
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/build
+**/TestResults
+docs
+examples
+frontend
+packages
+infrastructure
+backend/tests
+.env
+.env.*
+!.env.example
+*.md
+*.log

@@ -1,0 +1,143 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { apiUrl, primaryProject } from "../lib/domibase";
+import { DOMIBASE_PROJECT_KEY } from "astro:env/server";
+
+export const prerender = false;
+
+const projectKey = DOMIBASE_PROJECT_KEY ?? "";
+---
+
+<Layout title="Tiempo real" current="tiempo-real">
+  <header class="page-head">
+    <p class="eyebrow">Realtime Plane · SignalR</p>
+    <h1>Eventos en tiempo real</h1>
+    <p class="lede">
+      Esta página se suscribe por WebSocket/SSE a <code>/realtime/v1</code>. Cada vez que alguien
+      inserta, actualiza o elimina una fila en <code>contactos</code> o <code>notas</code>, el
+      servidor notifica con un evento mínimo y la UI puede reconsultar vía Runtime.
+    </p>
+  </header>
+
+  <div class="stack">
+    <section class="card" aria-labelledby="estado-title">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Conexión</p>
+          <h2 id="estado-title">Estado</h2>
+        </div>
+        <span id="connection-status" class="status status-nuevo" role="status">Desconectado</span>
+      </div>
+      <p class="hint">
+        El SDK envía la API key pública y, si hay sesión, el Bearer durante la negociación.
+        Los eventos se entregan <strong>después del commit</strong> en PostgreSQL.
+      </p>
+    </section>
+
+    <section class="card" aria-labelledby="log-title">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Eventos recibidos</p>
+          <h2 id="log-title">Log</h2>
+        </div>
+        <button id="clear-log" class="button button-small" type="button">Limpiar</button>
+      </div>
+      <ol id="event-log" class="event-log" aria-live="polite"></ol>
+      <div id="empty-log" class="empty">
+        <strong>Sin eventos todavía</strong>
+        <span>Crea o modifica un contacto o una nota para ver la notificación.</span>
+      </div>
+    </section>
+  </div>
+</Layout>
+
+<script define:vars={{ apiUrl, projectKey }}>
+  import { createClient } from "@domibase/client";
+
+  if (apiUrl.length > 0 && projectKey.length > 0 && projectKey.startsWith("db_public_")) {
+    const db = createClient({ url: apiUrl, projectKey });
+
+    const statusEl = document.getElementById("connection-status");
+    const logEl = document.getElementById("event-log");
+    const emptyEl = document.getElementById("empty-log");
+
+    if (statusEl && logEl && emptyEl) {
+      function setStatus(text, kind) {
+        statusEl.textContent = text;
+        statusEl.className = `status status-${kind}`;
+      }
+
+      function appendEvent(event) {
+        emptyEl.style.display = "none";
+        const item = document.createElement("li");
+        const time = new Date(event.timestamp).toLocaleTimeString("es-ES");
+        item.innerHTML = `
+          <time datetime="${event.timestamp}">${time}</time>
+          <span class="event-op">${event.operation}</span>
+          <span class="event-table">${event.table}</span>
+          <span class="event-id">${event.rowId ?? "—"}</span>
+        `;
+        logEl.prepend(item);
+      }
+
+      db.realtime.channel("contactos").subscribe((event) => appendEvent(event));
+      db.realtime.channel("notas").subscribe((event) => appendEvent(event));
+
+      setStatus("Conectado", "cliente");
+
+      document.getElementById("clear-log")?.addEventListener("click", () => {
+        logEl.innerHTML = "";
+        emptyEl.style.display = "";
+      });
+    }
+  }
+</script>
+
+<style>
+  .event-log {
+    display: grid;
+    gap: 0.5rem;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+
+  .event-log li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    align-items: center;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-soft);
+    font-size: 0.9rem;
+  }
+
+  .event-log time {
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+  }
+
+  .event-op {
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    font-size: 0.75rem;
+    font-weight: 650;
+    text-transform: uppercase;
+  }
+
+  .event-table {
+    font-family: var(--font-mono);
+    font-weight: 650;
+  }
+
+  .event-id {
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+  }
+</style>

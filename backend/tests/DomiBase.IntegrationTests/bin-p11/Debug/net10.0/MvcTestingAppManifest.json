@@ -1,0 +1,7 @@
+{
+  "DomiBase.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "C:\\Proyectos\\DomiBase\\backend\\src\\DomiBase.Api",
+  "DomiBase.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "C:\\Proyectos\\DomiBase\\backend\\src\\DomiBase.Application",
+  "DomiBase.Domain, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "C:\\Proyectos\\DomiBase\\backend\\src\\DomiBase.Domain",
+  "DomiBase.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "C:\\Proyectos\\DomiBase\\backend\\src\\DomiBase.Infrastructure",
+  "DomiBase.Provisioning, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "C:\\Proyectos\\DomiBase\\backend\\src\\DomiBase.Provisioning"
+}

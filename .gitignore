@@ -1,0 +1,91 @@
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDEs / Editors
+.vs/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+!.vscode/tasks.example.json
+!.vscode/launch.example.json
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.swp
+*.swo
+*~
+
+# .NET
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+TestResults/
+artifacts/
+*.DotSettings.user
+project.lock.json
+project.fragment.lock.json
+*.nupkg
+*.snupkg
+*.nuget.props
+*.nuget.targets
+
+# Node.js / Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-store/
+.npm/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+dist/
+build/
+.out/
+.next/
+.astro/
+coverage/
+
+# Environment and secrets (never commit real values)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.cer
+*.crt
+secrets/
+secrets*.json
+appsettings.*.local.json
+appsettings.Development.local.json
+
+# Docker / local runtime data
+.docker/
+docker-data/
+**/postgres-data/
+**/pgdata/
+**/backups/
+*.dump
+*.dump.tmp
+
+# Impeccable review artifacts (local evidence only)
+.impeccable/review/
+.impeccable/build/
+.impeccable/mocks/
+
+# Local E2E state (non-secret synthetic identifiers only)
+scripts/dev/.minimal-e2e-state.json
+
+# Misc
+*.tmp
+*.bak
+*.log

@@ -42,7 +42,7 @@ Flujo vigente: **Login → Proyectos → Resumen / Table Editor / Conexión → 
 Escritura mediante Control Plane con operaciones tipadas y validadas; la clave pública no se usa para administrar el esquema.
 
 - **Tablas:** crear con una o varias columnas; seleccionar tabla; eliminar tabla con confirmación.
-- **Columnas:** nombre, tipo de la allowlist (`uuid`, `text`, `varchar(255)`, `int4`, `int8`, `boolean`, `timestamptz`, `date`, `jsonb`, `numeric`, `bytea`, `inet`), valor por defecto y marcadores `nullable`, `primaryKey`, `unique`, `identity`. `IDENTITY` solo aplica a tipos enteros y no admite `DEFAULT`.
+- **Columnas:** nombre, tipo de la allowlist (`uuid`, `text`, `varchar(255)`, `int4`, `int8`, `boolean`, `timestamptz`, `date`, `jsonb`, `numeric`, `bytea`, `inet`), valor por defecto y marcadores `nullable`, `primaryKey`, `unique`, `identity`. `IDENTITY` solo aplica a tipos enteros y no admite `DEFAULT`; el formulario lo deshabilita en otros tipos, lo limpia al cambiar el tipo y omite `DEFAULT` en la petición cuando está activo. «Añadir columna» expone los mismos marcadores que «Nueva tabla».
 - **Visualización:** tipo, nulabilidad, default, `PK` / `IDENTITY` / `UNIQUE` y referencias FK.
 - **RLS mínimo:** interruptores para `anon_select` y `anon_insert`, con expresiones fijas `true` y `GRANT` aditivos por comando. Sin política, el SDK no puede leer ni escribir.
 - **Registros:** filtro por columna con `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `like`, `ilike`, `is`; orden ascendente/descendente; límite 1–200; paginación «Anterior» / «Siguiente»; se muestra el rol y el número de filas.
@@ -78,13 +78,22 @@ Auth de usuarios finales, Storage, Realtime, Functions, SQL Editor, Migraciones,
 
 ## 6. Evidencia de verificación previa
 
-- Panel: `npm run check` limpio, `npm test` 57/57, `npm run build` correcto.
+- Panel: `npm run check` limpio, `npm test` 63/63 (cliente, esquema y layout), `npm run build` correcto.
 - Backend: 491/491 tests (311 unitarios, 134 integración, 46 seguridad).
 - SDK: 70/70 tests.
 - E2E del flujo mínimo: 14/14 antes del reinicio y 15/15 tras `docker restart domibase-postgres` + reinicio de API.
 - Login a través del proxy: `POST http://127.0.0.1:5190/admin/v1/login` → HTTP 200 con sesión emitida.
 - Detalle ejecutable: `docs/implementation/admin-minimal-e2e.md`; alcance y contratos: `docs/implementation/admin-minimal-scope.md`.
 
-## 7. Conclusión
+## 7. Corrección del 2026-11-19
+
+A raíz del informe del propietario («no puedo crear tablas», «no puedo agregar columnas», «`.app__body` está mal») se reprodució el flujo en Chrome headless contra la API real:
+
+- **Layout:** `.app__body` ahora usa `minmax(0, 1fr)` por defecto y `15rem minmax(0, 1fr)` solo mediante `.app:not([data-section="projects"])`. Medido en el navegador: Proyectos `1424px` sin sidebar; Table Editor `240px 1169px` con sidebar. Antes, Proyectos caía en la pista de `15rem` y la tabla de proyectos obligaba a desplazarse para alcanzar «Abrir».
+- **Creación real:** desde el panel se creó `contactos_ui_final` con `id int8 PK IDENTITY` y `nombre text`, y después se añadió `email text` con el nuevo formulario. Sin errores HTTP ni avisos. La tabla de prueba se eliminó posteriormente por la Control API; `aislamiento-demo` conserva solo `contactos`.
+- **Causa del fallo de creación:** el formulario permitía combinar `IDENTITY` con `DEFAULT` o con tipos no enteros, combinación que `SchemaDdlValidator` rechaza. La UI ya no la genera; la validación del servidor no se relajó.
+- **Regresión cubierta:** `src/styles.test.ts` y `src/lib/schema-draft.test.ts`.
+
+## 8. Conclusión
 
 El panel cubre de extremo a extremo el flujo mínimo acordado: login, proyectos con PostgreSQL propio, tablas/campos/registros y conexión con SDK. No se construyó ni publicó imagen Docker, no se tocó el homelab y no se hicieron commits ni pushes.

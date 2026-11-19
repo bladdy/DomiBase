@@ -9,6 +9,14 @@ import {
   type SchemaTable
 } from "../lib/control-client";
 import { errorText } from "../lib/format";
+import {
+  blankColumn,
+  columnRequest,
+  sqlTypes,
+  supportsIdentity,
+  withType,
+  type ColumnDraft
+} from "../lib/schema-draft";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Notice } from "./Notice";
 
@@ -21,37 +29,7 @@ interface TableEditorSectionProps {
   readonly onTablesChanged: () => void;
 }
 
-interface ColumnDraft {
-  readonly key: number;
-  name: string;
-  type: string;
-  nullable: boolean;
-  primaryKey: boolean;
-  unique: boolean;
-  identity: boolean;
-  defaultText: string;
-}
-
-const sqlTypes = [
-  "uuid", "text", "varchar(255)", "int4", "int8", "boolean",
-  "timestamptz", "date", "jsonb", "numeric", "bytea", "inet"
-] as const;
-
 const operators = ["eq", "neq", "gt", "gte", "lt", "lte", "like", "ilike", "is"] as const;
-
-let nextDraftKey = 1;
-function blankColumn(): ColumnDraft {
-  return {
-    key: nextDraftKey++,
-    name: "",
-    type: "text",
-    nullable: true,
-    primaryKey: false,
-    unique: false,
-    identity: false,
-    defaultText: ""
-  };
-}
 
 function describeError(error: unknown): string {
   if (error instanceof ControlApiError && error.hint) {
@@ -71,23 +49,6 @@ function cellText(value: unknown): string {
     return JSON.stringify(value);
   }
   return String(value);
-}
-
-function columnRequest(column: ColumnDraft): Record<string, unknown> {
-  const request: Record<string, unknown> = {
-    name: column.name.trim(),
-    type: column.type,
-    nullable: column.nullable,
-    primaryKey: column.primaryKey,
-    unique: column.unique
-  };
-  if (column.identity) {
-    request.identity = true;
-  }
-  if (column.defaultText.trim() !== "") {
-    request.default = column.defaultText.trim();
-  }
-  return request;
 }
 
 /** Editable schema and rows for one project, using only validated Control Plane operations. */
@@ -442,11 +403,12 @@ export function TableEditorSection({
                   <select
                     id={`new-col-type-${column.key}`}
                     value={column.type}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const type = event.target.value;
                       setNewColumns((current) =>
-                        current.map((item) => item.key === column.key ? { ...item, type: event.target.value } : item)
-                      )
-                    }
+                        current.map((item) => item.key === column.key ? withType(item, type) : item)
+                      );
+                    }}
                   >
                     {sqlTypes.map((sqlType) => <option key={sqlType} value={sqlType}>{sqlType}</option>)}
                   </select>
@@ -463,6 +425,7 @@ export function TableEditorSection({
                     }
                     placeholder="gen_random_uuid()"
                     spellCheck={false}
+                    disabled={column.identity}
                   />
                 </div>
               </div>
@@ -476,10 +439,11 @@ export function TableEditorSection({
                 <label><input type="checkbox" checked={column.unique} onChange={(event) =>
                   setNewColumns((current) => current.map((item) => item.key === column.key ? { ...item, unique: event.target.checked } : item))
                 } /> UNIQUE</label>
-                <label><input type="checkbox" checked={column.identity} onChange={(event) =>
+                <label><input type="checkbox" checked={column.identity} disabled={!supportsIdentity(column.type)} onChange={(event) =>
                   setNewColumns((current) => current.map((item) => item.key === column.key ? { ...item, identity: event.target.checked } : item))
                 } /> IDENTITY</label>
               </div>
+              {column.identity ? <p className="hint">IDENTITY solo con tipos enteros y sin valor por defecto.</p> : null}
               {newColumns.length > 1 ? (
                 <button
                   type="button"
@@ -544,14 +508,23 @@ export function TableEditorSection({
                 </div>
                 <div className="field">
                   <label htmlFor="add-col-type">Tipo</label>
-                  <select id="add-col-type" value={columnDraft.type} onChange={(event) => setColumnDraft({ ...columnDraft, type: event.target.value })}>
+                  <select id="add-col-type" value={columnDraft.type} onChange={(event) =>
+                    setColumnDraft((current) => withType(current, event.target.value))
+                  }>
                     {sqlTypes.map((sqlType) => <option key={sqlType} value={sqlType}>{sqlType}</option>)}
                   </select>
                 </div>
                 <div className="field">
                   <label htmlFor="add-col-default">Default</label>
-                  <input id="add-col-default" value={columnDraft.defaultText} onChange={(event) => setColumnDraft({ ...columnDraft, defaultText: event.target.value })} spellCheck={false} />
+                  <input id="add-col-default" value={columnDraft.defaultText} onChange={(event) => setColumnDraft({ ...columnDraft, defaultText: event.target.value })} spellCheck={false} disabled={columnDraft.identity} />
                 </div>
+                <div className="schema-draft__flags">
+                  <label><input type="checkbox" checked={columnDraft.nullable} onChange={(event) => setColumnDraft({ ...columnDraft, nullable: event.target.checked })} /> nullable</label>
+                  <label><input type="checkbox" checked={columnDraft.primaryKey} onChange={(event) => setColumnDraft({ ...columnDraft, primaryKey: event.target.checked })} /> PK</label>
+                  <label><input type="checkbox" checked={columnDraft.unique} onChange={(event) => setColumnDraft({ ...columnDraft, unique: event.target.checked })} /> UNIQUE</label>
+                  <label><input type="checkbox" checked={columnDraft.identity} disabled={!supportsIdentity(columnDraft.type)} onChange={(event) => setColumnDraft({ ...columnDraft, identity: event.target.checked })} /> IDENTITY</label>
+                </div>
+                {columnDraft.identity ? <p className="hint">IDENTITY solo con tipos enteros y sin valor por defecto.</p> : null}
                 <button type="submit" className="button button--primary" disabled={busy}>Añadir</button>
               </form>
             ) : null}

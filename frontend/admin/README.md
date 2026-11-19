@@ -48,7 +48,7 @@ Las escrituras de registros se ejecutan mediante la Control Plane reutilizando l
 | --- | --- |
 | `cmd /c npm run dev` | Servidor de desarrollo en `127.0.0.1:5190` |
 | `cmd /c npm run check` | Comprobación de tipos (sin emitir) |
-| `cmd /c npm test` | Tests del cliente HTTP con `fetch` inyectable |
+| `cmd /c npm test` | Tests del cliente HTTP con `fetch` inyectable, mapa de esquema y layout del shell |
 | `cmd /c npm run build` | Typecheck + build de producción con CSP |
 | `cmd /c npm run preview` | Sirve el build con el mismo proxy `/api` y `/admin` |
 
@@ -74,9 +74,12 @@ src/
   components/ConfirmDialog.tsx
   lib/control-client.ts           HTTP + tipos + errores canónicos
   lib/control-client.test.ts      tests con fetch inyectable
+  lib/schema-draft.ts             columnas en borrador: IDENTITY/DEFAULT y tipos enteros
+  lib/schema-draft.test.ts        tests del mapa de esquema
   lib/session.ts                  sessionStorage de la sesión
   lib/format.ts                   fechas e identificadores
   styles.css                      sistema visual de consola
+  styles.test.ts                  tests del layout del shell
 ```
 
 Detalle de decisiones y verificación: `docs/implementation/admin-minimal-scope.md`.

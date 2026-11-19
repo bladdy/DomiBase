@@ -59,3 +59,18 @@ Si la clave del ejemplo queda revocada, se renueva con una nueva clave pública 
 ## Hallazgo corregido durante la verificación
 
 Crear `anon_insert` después de `anon_select` ejecutaba `REVOKE ALL` sobre el rol funcional y eliminaba el `GRANT SELECT` de la política previa. El Table Editor permitía marcar ambos interruptores pero la lectura se rompía. Ahora los `GRANT` son aditivos y limitados a los comandos de cada política; RLS sigue siendo la comprobación definitiva. Cubierto por `BuildStatements_ComplementaryPoliciesDoNotRevokeEachOther`.
+
+## Verificación del panel del 2026-11-19
+
+Con el stack local en marcha (PostgreSQL en Docker, API en `:5080` y `npm run dev` en `:5190`) se dirigió el panel con Chrome headless mediante el protocolo DevTools, sin instalar dependencias nuevas:
+
+| Comprobación | Resultado |
+| --- | --- |
+| Proyectos usa una sola columna y no muestra sidebar (`1424px`) | OK |
+| Table Editor muestra sidebar y contenido (`240px 1169px`) y el botón «Nueva tabla» | OK |
+| Crear `contactos_ui_final(id int8 PK IDENTITY, nombre text)` desde el formulario | OK, sin errores |
+| «Añadir columna» expone nombre, tipo, default y los cuatro marcadores; `IDENTITY` deshabilitado en `text` | OK |
+| Añadir `email text` desde el panel | OK, visible en el esquema |
+| Eliminación de la tabla de prueba por la Control API, dejando solo `contactos` | OK |
+
+La causa del fallo reportado al crear tablas/columnas era una combinación inválida que el formulario permitía enviar (`IDENTITY` con `DEFAULT` o con un tipo no entero), rechazada por `SchemaDdlValidator`. La UI ya no genera esa petición; las reglas del servidor no cambiaron. Regresión cubierta por `frontend/admin/src/lib/schema-draft.test.ts` y `frontend/admin/src/styles.test.ts`.

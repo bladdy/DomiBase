@@ -215,6 +215,11 @@ code {
   display: grid;
   min-block-size: 0;
   flex: 1;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* The sidebar only exists inside a project. Without it, Projects must use the full width. */
+.app:not([data-section="projects"]) .app__body {
   grid-template-columns: 15rem minmax(0, 1fr);
 }
 
@@ -1506,7 +1511,8 @@ dialog::backdrop {
     display: none;
   }
 
-  .app__body {
+  .app__body,
+  .app:not([data-section="projects"]) .app__body {
     grid-template-columns: minmax(0, 1fr);
   }
 

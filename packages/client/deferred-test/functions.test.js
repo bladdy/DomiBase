@@ -9,7 +9,7 @@ import {
   sentBody,
   BASE_URL,
   PUBLIC_KEY
-} from "./helpers.js";
+} from "../test/helpers.js";
 
 test("functions.invoke posts JSON payload and parses the data envelope", async () => {
   const resultData = { input: { nombre: "Ana" }, context: { projectId: "p1", userId: null } };

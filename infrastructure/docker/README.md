@@ -1,6 +1,6 @@
 # Imagen futura de la API — `infrastructure/docker/Dockerfile`
 
-Estado: **preparada, no construida ni publicada**. Durante el desarrollo **solo PostgreSQL se ejecuta en Docker**; la API se ejecuta directamente en Windows con `dotnet run`. Este directorio contiene el artefacto de empaquetado para el despliegue futuro (`bladdy34/domibase-api:0.1.0`).
+Estado: **construida localmente para pruebas, no publicada**. El stack `docker compose` de la raíz levanta PostgreSQL, esta API y el panel admin bajo el proyecto `domibase`; el modo clásico sigue permitiendo ejecutar la API en Windows con `dotnet run`. Este directorio contiene el artefacto de empaquetado para el despliegue futuro (`bladdy34/domibase-api:0.1.0`).
 
 ## Diseño
 
@@ -36,11 +36,11 @@ Ningún secreto se incluye en la imagen. El contenedor debe recibir, como variab
 | `DOMIBASE_CORS_ORIGINS` | No | Orígenes separados por comas; CORS no es autorización. |
 | `ASPNETCORE_URLS` | No | Ya definida como `http://+:8080`. |
 
-La API carga `.env` **solo en desarrollo**; en el contenedor se deben usar variables de entorno reales, no un archivo `.env` montado con secretos.
+La API carga `.env` **solo en desarrollo**; en el contenedor se deben usar variables de entorno reales, no un archivo `.env` montado con secretos. En el stack local, Compose usa `env_file: .env` y sobrescribe las cadenas de conexión y `RUNTIME_DB_HOST` para apuntar a `postgres:5432` dentro de `domibase_net`.
 
-## Construcción (no ejecutar sin autorización)
+## Construcción y publicación
 
-Estos comandos documentan cómo se construirá y publicará la imagen cuando las pruebas estén completas y exista autorización expresa. **No se han ejecutado.**
+La construcción local ya se ejecuta desde la raíz con `docker compose up -d --build`. La publicación de `bladdy34/domibase-api:0.1.0` **sigue sin autorizarse**.
 
 ```powershell
 # Solo con autorización explícita:

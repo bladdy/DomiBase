@@ -1,9 +1,5 @@
-import { AuthClientImpl, type AuthClient } from "./auth.js";
 import { DomiBaseError } from "./errors.js";
-import { FunctionsClientImpl, type FunctionsClient } from "./functions.js";
 import { QueryBuilderImpl, type QueryBuilder } from "./query-builder.js";
-import { RealtimeClientImpl, type RealtimeClientOptions } from "./realtime.js";
-import { StorageClientImpl, type StorageClient } from "./storage.js";
 import { HttpTransport, type NormalizedConfig } from "./transport.js";
 import type { DomiBaseConfig, Row } from "./types.js";
 
@@ -12,12 +8,6 @@ const MAX_TIMEOUT_MS = 10 * 60 * 1000;
 const MAX_TABLE_LENGTH = 63;
 
 export interface DomiBaseClient {
-  auth: AuthClient;
-  functions: FunctionsClient;
-  realtime: {
-    channel(table: string): import("./realtime.js").RealtimeChannel;
-  };
-  storage: StorageClient;
   from<TRow extends Row = Row>(table: string): QueryBuilder<TRow>;
 }
 
@@ -28,27 +18,8 @@ export interface DomiBaseClient {
 export function createClient(config: DomiBaseConfig): DomiBaseClient {
   const normalized = normalizeConfig(config);
   const transport = new HttpTransport(normalized);
-  const auth = new AuthClientImpl(transport);
-
-  // The transport needs the current access token for Runtime requests. AuthClient
-  // is the single source of truth for the session.
-  normalized.authHeaderProvider = () => auth.getAuthorizationHeader();
-
-  const realtime = new RealtimeClientImpl(
-    normalized.url,
-    normalized.projectKey,
-    () => auth.getAuthorizationHeader()?.replace("Bearer ", "") ?? null
-  );
 
   return {
-    auth,
-    functions: new FunctionsClientImpl(transport),
-    realtime: {
-      channel(table: string) {
-        return realtime.channel(table);
-      }
-    },
-    storage: new StorageClientImpl(transport),
     from<TRow extends Row = Row>(table: string): QueryBuilder<TRow> {
       return QueryBuilderImpl.create<TRow>(transport, normalizeTable(table));
     }

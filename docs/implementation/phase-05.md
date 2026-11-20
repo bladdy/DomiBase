@@ -6,7 +6,7 @@ Entregar un SDK TypeScript propio, sin dependencias de Supabase, que consuma la 
 ## Entregado
 
 ### Paquete
-- `packages/client` con nombre provisional `@domibase/client`, `private: true` (no se publica en npm todavía).
+- `packages/client` con nombre `@domibase/client`, publicado en npm como `0.1.0` (tag `latest`).
 - ESM (`"type": "module"`), TypeScript estricto (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax`) y declaraciones `.d.ts` con source maps.
 - Sin dependencias de ejecución; `typescript` es la única dependencia de desarrollo.
 - Scripts:
@@ -99,10 +99,10 @@ Resultado:
   - `test/single.test.js` — semántica de `single`/`maybeSingle` y propagación de errores.
   - `test/transport.test.js` — envelopes, errores HTTP/red/timeout/abort, normalización de URL y validación de configuración.
 - No se usan paquetes ni código de Supabase.
-- No se publicó el paquete ni se construyó imagen Docker.
+- Paquete publicado en npm como `0.1.0`; la imagen Docker de la API sigue sin construirse.
 
 ## Limitaciones actuales
-- El paquete sigue siendo privado y no publicado; el nombre `@domibase/client` debe verificarse en npm antes de publicar.
+- Paquete publicado como `0.1.0`; nombre y scope `@domibase` verificados en npm.
 - No implementa Auth, Realtime ni Storage (fuera del alcance de Fase 1).
 - No incluye reintentos automáticos ni deduplicación de peticiones.
 - Los tests del SDK usan un `fetch` inyectado; la integración con el Runtime real y Astro corresponde a la Fase 6.

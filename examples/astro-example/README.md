@@ -1,9 +1,14 @@
 # DomiBase · ejemplo Astro
 
-Ejemplo SSR real que consume la API Runtime de DomiBase con el SDK propio
-[`@domibase/client`](../../packages/client). Inserta, lista, actualiza y elimina contactos en
-PostgreSQL mediante la clave pública del proyecto, e invoca una función WebAssembly aislada con
-`db.functions.invoke`.
+Ejemplo SSR real que consume la API Runtime de DomiBase con `@domibase/client@0.1.0` instalado
+desde npm. Inserta, lista, actualiza y elimina contactos en PostgreSQL mediante la clave pública
+del proyecto. La página `/diagnostico` comprueba en vivo el aislamiento entre proyectos y el rechazo
+de claves inválidas, revocadas y ausentes.
+
+> **Alcance Fase 1:** `createClient`, `from` y el query builder. El paquete publicado no incluye
+> `auth`, `realtime`, `storage` ni `functions`; las páginas y helpers que los usaban se retiraron de
+> este ejemplo. El código de esas capacidades sigue conservado como diferido en
+> `packages/client/deferred` para fases posteriores.
 
 - Astro 7 con `@astrojs/node` en modo `standalone` y `output: "server"`.
 - Sin Supabase, GoTrue ni PostgREST.
@@ -12,9 +17,10 @@ PostgreSQL mediante la clave pública del proyecto, e invoca una función WebAss
 
 ## Requisitos
 
-1. PostgreSQL de desarrollo en Docker (`domibase-postgres`, `127.0.0.1:5433`).
-2. API DomiBase ejecutándose en `http://localhost:5080`.
-3. SDK compilado en `packages/client/dist`.
+1. Stack Docker local (`docker compose up -d --build` desde la raíz: `domibase-postgres`, `domibase-api` y `domibase-admin`) o, en modo clásico, solo PostgreSQL en Docker (`domibase-postgres`, `127.0.0.1:5433`).
+2. API DomiBase accesible en `http://localhost:5080`.
+3. SDK local compilado solo para el script de preparación
+   (`npm --prefix packages/client run build`). La aplicación Astro usa el paquete de npm.
 
 ## Puesta en marcha
 
@@ -24,7 +30,7 @@ Desde la raíz del repositorio:
 # 1. API en una terminal
 dotnet run --project backend/src/DomiBase.Api
 
-# 2. Preparar proyectos, tablas/RLS, claves y .env del ejemplo
+# 2. Preparar proyectos, tabla/RLS, claves y .env del ejemplo
 node scripts/dev/phase-06-demo.mjs
 ```
 
@@ -34,10 +40,8 @@ El script:
 - crea una clave pública por proyecto y revoca una clave adicional para la prueba de revocación;
 - crea `public.contactos` con RLS y políticas de demo en la base de cada proyecto;
 - siembra una fila distinta por proyecto;
-- registra la función `demo-echo` (módulo WASM que devuelve el payload y el contexto del proyecto);
 - escribe `examples/astro-example/.env` sin imprimir secretos;
-- verifica CRUD, aislamiento, clave inválida, clave revocada, clave ausente e invocación de la
-  función con el SDK.
+- verifica CRUD, aislamiento y rechazo de claves con el SDK.
 
 Después:
 
@@ -47,28 +51,21 @@ cmd /c npm install
 cmd /c npm run dev
 ```
 
-Abrir <http://localhost:4325> para el CRUD, <http://localhost:4325/funciones> para invocar la
-función WASM con la sesión autenticada y <http://localhost:4325/diagnostico> para las comprobaciones
-de seguridad en vivo. El puerto 4325 se fija en `astro.config.mjs` porque el 4321 por defecto puede
-estar ocupado por otra aplicación local.
+Abrir <http://localhost:4325> para el CRUD y <http://localhost:4325/diagnostico> para las
+comprobaciones de seguridad en vivo. El puerto 4325 se fija en `astro.config.mjs` porque el 4321
+por defecto puede estar ocupado por otra aplicación local.
 
 ## Scripts
 
 | Script | Uso |
 |---|---|
-| `npm run dev` | Compila el SDK y arranca Astro en modo desarrollo. |
-| `npm run build` | Compila el SDK y genera el servidor `standalone` en `dist/`. |
-| `npm run check` | Compila el SDK y ejecuta `astro check`. |
+| `npm run dev` | Arranca Astro en modo desarrollo. |
+| `npm run build` | Genera el servidor `standalone` en `dist/`. |
+| `npm run check` | Ejecuta `astro check`. |
 | `npm run start` | Ejecuta el build con `.env` (`node --env-file-if-exists=.env`). |
 
-`npm install` necesita que el SDK tenga `dist/`; los scripts de Astro lo compilan antes de
-arrancar. En una copia limpia ejecuta primero:
-
-```powershell
-cd packages/client
-cmd /c npm install
-cmd /c npm run build
-```
+La dependencia `@domibase/client` se instala desde el registry; estos scripts no compilan el SDK
+local.
 
 ## Variables
 
@@ -99,9 +96,9 @@ Nunca uses el prefijo `PUBLIC_` en estas variables: las claves deben permanecer 
 
 ## Limitaciones
 
-- Es un ejemplo de desarrollo; el registro y login solo sirven para demostrar RLS y el contexto de
-  las funciones, no sustituyen un sistema de autenticación de usuarios finales.
+- El ejemplo cubre únicamente la API Fase 1 del SDK publicado; no hay login, notas, almacenamiento,
+  funciones ni tiempo real.
 - No hay panel de administración ni creación de tablas desde la interfaz.
-- Las funciones son síncronas y corren en un worker one-shot; el guest no tiene red ni llamadas de
-  vuelta al Runtime.
-- El rate limit del Runtime se mide por proyecto (P1.4) y puede afectar a pruebas muy intensivas; se ajusta solo desde la Control Plane con `PATCH /api/v1/projects/{id}/rate-limit`. Las claves inválidas o ausentes se limitan por IP con los defaults globales.
+- El rate limit del Runtime se mide por proyecto (P1.4) y puede afectar a pruebas muy intensivas; se
+  ajusta solo desde la Control Plane con `PATCH /api/v1/projects/{id}/rate-limit`. Las claves
+  inválidas o ausentes se limitan por IP con los defaults globales.

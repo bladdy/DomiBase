@@ -3,6 +3,8 @@
 **Fecha:** 2026-11-16  
 **Alcance:** inspección inicial exclusivamente de lectura (sin instalación de paquetes, sin creación de contenedores, sin modificación de servicios existentes ni implementación).
 
+> **Actualización 2026-11-19:** el estado del paquete npm quedó resuelto con la publicación de `@domibase/client@0.1.0` con tag `latest`; las referencias históricas a "no verificado" se han ajustado en los puntos correspondientes.
+
 **Revisado:** `AGENTS.md`, `README.md`, `docs/architecture/overview.md`, `docs/architecture/security.md`, `docs/implementation/phase-01.md`, `docs/implementation/roadmap.md`, `docs/sdk/api-contract.md`, estructura completa del repositorio, estado/historial Git y herramientas locales.
 
 ---
@@ -51,7 +53,7 @@
 4. **npm en PowerShell restringido:** la política de ejecución/firma impide `npm.ps1`/`npx.ps1`; scripts de automatización deben preferir `npm.cmd`/`npx.cmd` o `cmd`.
 5. **Clientes PostgreSQL ausentes en `PATH`:** dificulta diagnósticos manuales fuera de contenedor (no bloqueante si se opera vía contenedor/driver).
 6. **Ausencia de `.gitignore`:** riesgo de introducir accidentalmente `bin/`, `obj/`, `node_modules/`, `.env`, artefactos y secretos al empezar la implementación.
-7. **Paquete npm `@domibase/client`:** disponibilidad del scope/nombre **no verificada** (no se realizaron consultas/publicaciones).
+7. **Paquete npm `@domibase/client`:** disponibilidad verificada: scope creado y `@domibase/client@0.1.0` publicado con tag `latest`.
 8. **PostgreSQL 18:** decisión sujeta a validar imagen/compatibilidad del entorno; sin Docker operativo ni inventario de imágenes, no confirmado.
 9. **NexStack:** sin conflictos de código/nombres encontrados en el estado actual.
 
@@ -85,7 +87,7 @@
 
 1. **Inventario del homelab (Ubuntu, 16 GB, NPM/Portainer):** con acceso aprobado, listar contenedores, imágenes, redes, puertos publicados, volúmenes, uso de recursos y servicios existentes; identificar colisiones y reservar nombres/puertos/redes para DomiBase sin tocar stacks actuales.
 2. **Habilitar y validar Docker en el entorno de desarrollo:** engine operativo, `docker compose version`, capacidad de ejecutar contenedores; documentar diferencias Windows vs homelab.
-3. **Validaciones externas rápidas (sin instalar/publicar):** disponibilidad del scope/nombre `@domibase/client` en npm; elegir imagen PostgreSQL 18 compatible y política de actualización.
+3. **Validaciones externas rápidas:** scope/nombre verificado y paquete publicado como `0.1.0` (`latest`); elegir imagen PostgreSQL 18 compatible y política de actualización.
 
 ### Fase 1 — orden de ejecución recomendado (ajustado a hallazgos)
 
@@ -113,7 +115,7 @@ Sugerencia de cambios a incorporar según hallazgos:
 2. **Prerequisitos/bloqueos:** inventario obligatorio del homelab Ubuntu/NPM/Portainer antes de desplegar; habilitar Docker engine para dev/tests; confirmar acceso/recursos (16 GB) y ausencia de colisiones de puertos/redes/volúmenes/nombres.
 3. **Ajustes de entorno:** inspección realizada en Windows; necesidad de scripts cross-platform (usar `npm.cmd` si aplica) y alineación con target Ubuntu.
 4. **Infraestructura local:** fijar imagen PostgreSQL 18 validada, volumen nombrado, healthcheck, sin publicación externa; añadir `.gitignore` y `.env.example` como prerequisito temprano.
-5. **Validaciones previas:** verificar disponibilidad de `@domibase/client` y documentar decisión; registrar decisiones pendientes (puertos, estrategia de secretos/persistencia de claves de cifrado) con fecha/hallazgo.
+5. **Validaciones previas:** disponibilidad de `@domibase/client` resuelta con publicación `0.1.0`; registrar decisiones pendientes (puertos, estrategia de secretos/persistencia de claves de cifrado) con fecha/hallazgo.
 6. **Trazabilidad:** anotar que contenedores/redes/volúmenes existentes no pudieron inventariarse localmente y deben relevarse en el homelab.
 
 ---

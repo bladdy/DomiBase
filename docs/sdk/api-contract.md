@@ -2,7 +2,19 @@
 
 Paquete provisional: `@domibase/client`. Implementación propia en `packages/client` (ESM, TypeScript estricto). No se usan `@supabase/supabase-js`, GoTrue ni PostgREST.
 
-> **Alcance soportado (Fase 1):** inicialización, query builder de datos y errores. El repositorio conserva módulos de Auth, Realtime, Storage y Functions de entregas anteriores como código inactivo: **no están en los exports públicos de `src/index.ts`, no se documentan como API soportada y no deben usarse en nuevas integraciones**.
+## Instalación desde npm
+
+```bash
+npm i @domibase/client
+```
+
+Versión publicada: `0.1.0` (tag `latest`). Para fijar la versión exacta, usa `npm i @domibase/client@0.1.0`.
+
+El paquete es ESM (`Node >= 20`): usar `import`, no `require`. Necesita un backend DomiBase accesible, una clave `db_public_...` de un proyecto `Ready` y RLS/GRANT configurados en servidor. Las APIs de Auth, Realtime, Storage y Functions **no están incluidas** en este paquete.
+
+Para ejemplos completos de uso, instalación y resolución de problemas, ver el `README.md` del paquete.
+
+> **Alcance soportado (Fase 1):** inicialización, query builder de datos y errores. Los módulos de Auth, Realtime, Storage y Functions existen como código diferido en el repositorio (`packages/client/deferred`), **no están incluidos en el paquete npm `0.1.0`**, no están en los exports públicos y no deben usarse en nuevas integraciones.
 
 ## Inicialización
 

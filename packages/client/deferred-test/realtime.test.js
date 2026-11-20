@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { DomiBaseError, createClient } from "../dist/index.js";
-import { BASE_URL, PUBLIC_KEY } from "./helpers.js";
+import { BASE_URL, PUBLIC_KEY } from "../test/helpers.js";
 
 describe("realtime client", () => {
   it("exposes a channel factory", () => {

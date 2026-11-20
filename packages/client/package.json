@@ -1,9 +1,24 @@
 {
   "name": "@domibase/client",
   "version": "0.1.0",
-  "description": "DomiBase TypeScript client for the public Runtime data API",
-  "license": "UNLICENSED",
-  "private": true,
+  "description": "Official TypeScript SDK for DomiBase",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bladdy/DomiBase.git"
+  },
+  "homepage": "https://github.com/bladdy/DomiBase/tree/main/packages/client#readme",
+  "bugs": {
+    "url": "https://github.com/bladdy/DomiBase/issues"
+  },
+  "keywords": [
+    "domibase",
+    "typescript",
+    "rest",
+    "rls",
+    "sdk"
+  ],
+  "author": "bladdy",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,19 +29,22 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "sideEffects": false,
   "engines": {
     "node": ">=20"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "npm run clean && tsc -p tsconfig.json",
-    "test": "npm run build && node --test \"test/*.test.js\""
-  },
-  "dependencies": {
-    "@microsoft/signalr": "^8.0.7"
+    "test": "npm run build && node --test \"test/*.test.js\"",
+    "prepublishOnly": "npm test"
   },
   "devDependencies": {
     "typescript": "^5.9.3"

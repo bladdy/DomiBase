@@ -3,15 +3,12 @@ import type { DomiBaseResponse } from "./types.js";
 
 export type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
-export type AuthHeaderProvider = () => string | null;
-
 export interface NormalizedConfig {
   url: string;
   projectKey: string;
   timeout?: number;
   headers: Record<string, string>;
   fetchImpl: typeof fetch;
-  authHeaderProvider?: AuthHeaderProvider;
 }
 
 export interface WireRequest {
@@ -20,12 +17,6 @@ export interface WireRequest {
   query: URLSearchParams;
   body?: unknown;
   signal?: AbortSignal;
-}
-
-/** A request whose body is raw bytes (storage uploads) instead of JSON. */
-export interface BinaryWireRequest extends Omit<WireRequest, "body"> {
-  body: BodyInit;
-  contentType?: string;
 }
 
 interface Deadline {
@@ -53,58 +44,6 @@ export class HttpTransport {
     return this.executeJson<T>(request, init);
   }
 
-  /** Sends raw bytes and parses the canonical JSON envelope back. */
-  async sendBytes<T>(request: BinaryWireRequest): Promise<DomiBaseResponse<T>> {
-    const init = this.buildInit(request);
-    if (request.contentType !== undefined) {
-      (init.headers as Record<string, string>)["Content-Type"] = request.contentType;
-    }
-    init.body = request.body;
-
-    return this.executeJson<T>(request, init);
-  }
-
-  /**
-   * Performs a request and returns the raw response, used for binary downloads.
-   * Error responses are parsed into a DomiBaseError; successful responses are
-   * handed back untouched so the caller can read bytes.
-   */
-  async sendRaw(request: WireRequest): Promise<{ response: Response | null; error: DomiBaseError | null }> {
-    const init = this.buildInit(request);
-    const deadline = createDeadline(this.config.timeout, request.signal);
-    if (deadline.signal !== undefined) {
-      init.signal = deadline.signal;
-    }
-
-    try {
-      if (deadline.externallyAborted()) {
-        return { response: null, error: new DomiBaseError({ code: "ABORTED", message: "The request was aborted." }) };
-      }
-
-      let response: Response;
-      try {
-        response = await this.config.fetchImpl(this.buildUrl(request), init);
-      } catch {
-        return {
-          response: null,
-          error: new DomiBaseError({
-            code: this.transportErrorCode(deadline),
-            message: this.transportErrorMessage(deadline)
-          })
-        };
-      }
-
-      if (!response.ok) {
-        const text = await safeReadText(response);
-        return { response: null, error: parseError(tryParse(text), response.status) };
-      }
-
-      return { response, error: null };
-    } finally {
-      deadline.cleanup();
-    }
-  }
-
   private buildUrl(request: WireRequest): string {
     const queryString = request.query.toString();
     return `${this.config.url}${request.path}${queryString ? `?${queryString}` : ""}`;
@@ -117,11 +56,6 @@ export class HttpTransport {
       // The project key is authoritative: custom headers cannot replace it.
       apikey: this.config.projectKey
     };
-
-    const authHeader = this.config.authHeaderProvider?.();
-    if (authHeader !== undefined && authHeader !== null) {
-      headers.Authorization = authHeader;
-    }
 
     return { method: request.method, headers };
   }

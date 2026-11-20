@@ -9,12 +9,14 @@ Entregar `examples/astro-example`: una aplicación Astro SSR real que consume el
 - Astro **7.4.12** con `@astrojs/node` **11.1.13**, `output: "server"` y adaptador `standalone`.
 - Puerto fijo **4325** (`server.port` en `astro.config.mjs`): el `4321` por defecto estaba ocupado por otra aplicación local (proyecto Nexcard), y Astro intentaba saltar a otro puerto sin avisar.
 - Entorno validado con `astro:env/server` (`access: "secret"`): las claves se leen solo en el servidor y nunca se declaran con prefijo `PUBLIC_`.
-- Dependencia local `"@domibase/client": "file:../../packages/client"`; los scripts de Astro compilan el SDK antes de arrancar.
+- Dependencia `@domibase/client@0.1.0` instalada desde npm; los scripts de Astro no compilan el SDK local.
 - Sin Supabase, GoTrue ni PostgREST.
 
 ### Páginas
 - `src/pages/index.astro` — listado SSR de `contactos` y formulario de alta. POST + redirección **303** (patrón PRG) con validación en servidor además de la validación nativa del navegador. Acciones de actualizar estado y eliminar por fila.
 - `src/pages/diagnostico.astro` — comprobaciones de seguridad ejecutadas **en el servidor**: lectura del proyecto principal, lectura del segundo proyecto, aislamiento bidireccional, bloqueo de la base de control (`domibase_control`), clave inválida, clave revocada y petición sin clave. Los resultados se renderizan con `data-check` / `data-status`.
+
+> **Estado vigente:** al publicarse el SDK reducido a Fase 1 se retiraron las páginas y helpers heredados de Auth, Storage, Functions y Realtime, y el script de preparación dejó de crear el bucket y la función de demo. Estas capacidades siguen documentadas en sus informes históricos y su código diferido permanece en `packages/client/deferred`.
 
 ### Cliente y seguridad
 - `src/lib/domibase.ts` — factoría de clientes **solo servidor** a partir de `astro:env/server`; tipos de `Contacto`, columnas, estados y utilidades de error que nunca imprimen secretos.

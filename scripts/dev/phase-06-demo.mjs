@@ -53,25 +53,6 @@ const SECONDARY = {
   }
 };
 
-const DEMO_BUCKET_NAME = "demo-publico";
-
-const DEMO_FUNCTION_NAME = "demo-echo";
-
-// WebAssembly module compiled from this WAT (memory copy of the guest request):
-// (module
-//   (memory (export "memory") 2)
-//   (func (export "invoke") (param i32 i32) (result i64)
-//     i32.const 65536
-//     local.get 0
-//     local.get 1
-//     memory.copy
-//     i64.const 281474976710656
-//     local.get 1
-//     i64.extend_i32_u
-//     i64.or))
-const DEMO_FUNCTION_MODULE_BASE64 =
-  "AGFzbQEAAAABBwFgAn9/AX4DAgEABQMBAAIHEwIGbWVtb3J5AgAGaW52b2tlAAAKHQEbAEGAgAQgACAB/AoAAEKAgICAgIDAACABrYQL";
-
 let passed = 0;
 
 main().catch((error) => {
@@ -115,13 +96,6 @@ async function main() {
   await verifyIsolation(primary, secondary);
   await verifyRejectedKeys({ createClient, revokedKey });
   pass("CRUD, aislamiento y rechazo de claves verificados con @domibase/client");
-
-  await ensureDemoBucket(primaryProject.id);
-  pass("Bucket de Storage de demo disponible");
-
-  await ensureDemoFunction(primaryProject.id);
-  await verifyFunction(primary);
-  pass(`Función WASM ${DEMO_FUNCTION_NAME} registrada e invocada con el SDK`);
 
   writeExampleEnv({
     primaryKey: primaryKey.key,
@@ -359,52 +333,12 @@ async function verifyRejectedKeys({ createClient, revokedKey }) {
   pass("Clave inválida, clave revocada y clave ausente rechazadas con 401");
 }
 
-async function ensureDemoBucket(projectId) {
-  const buckets = await admin("GET", `/api/v1/projects/${projectId}/buckets`);
-  if (buckets.some((bucket) => bucket.name === DEMO_BUCKET_NAME)) {
-    return;
-  }
-
-  await admin("POST", `/api/v1/projects/${projectId}/buckets`, {
-    name: DEMO_BUCKET_NAME,
-    publicAccess: true
-  });
-}
-
-async function ensureDemoFunction(projectId) {
-  const functions = await admin("GET", `/api/v1/projects/${projectId}/functions`);
-  if (functions.some((fn) => fn.name === DEMO_FUNCTION_NAME)) {
-    return;
-  }
-
-  await admin("POST", `/api/v1/projects/${projectId}/functions`, {
-    name: DEMO_FUNCTION_NAME,
-    description: "Eco WASM de demostración: devuelve el request con el contexto del proyecto.",
-    moduleBase64: DEMO_FUNCTION_MODULE_BASE64,
-    limits: {
-      fuel: 1000000,
-      memoryPages: 16,
-      timeoutMs: 1000,
-      maxInputBytes: 65536,
-      maxOutputBytes: 65536
-    }
-  });
-}
-
-async function verifyFunction(client) {
-  const result = await client.functions.invoke(DEMO_FUNCTION_NAME, { mensaje: "hola" });
-  assert(!result.error, `La función de demo falló: ${formatError(result.error)}`);
-  assert(result.data?.input?.mensaje === "hola", "La función no devolvió el input enviado.");
-  assert(result.data?.context?.projectId, "La función no recibió el contexto del proyecto.");
-}
-
 function createDemoSchema(project, seed) {
   const databaseName = `domibase_${project.slug.replaceAll("-", "_")}`;
   const ownerRole = `${databaseName}_owner`;
   const anonymousRole = `${databaseName}_anon`;
-  const authenticatedRole = `${databaseName}_authenticated`;
 
-  assertIdentifier(databaseName, ownerRole, anonymousRole, authenticatedRole);
+  assertIdentifier(databaseName, ownerRole, anonymousRole);
   assertSingleQuoteFree(seed.nombre, seed.email, seed.estado, seed.notas);
 
   const sql = `
@@ -433,29 +367,6 @@ CREATE POLICY contactos_update ON public.contactos FOR UPDATE TO "${anonymousRol
 
 DROP POLICY IF EXISTS contactos_delete ON public.contactos;
 CREATE POLICY contactos_delete ON public.contactos FOR DELETE TO "${anonymousRole}" USING (true);
-
-CREATE TABLE IF NOT EXISTS public.notas (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    owner_id uuid NOT NULL DEFAULT current_setting('domibase.user_id', true)::uuid,
-    titulo text NOT NULL,
-    contenido text,
-    created_at timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.notas ENABLE ROW LEVEL SECURITY;
-GRANT SELECT, INSERT ON public.notas TO "${anonymousRole}", "${authenticatedRole}";
-
-DROP POLICY IF EXISTS notas_anon_select ON public.notas;
-CREATE POLICY notas_anon_select ON public.notas FOR SELECT TO "${anonymousRole}" USING (false);
-
-DROP POLICY IF EXISTS notas_anon_insert ON public.notas;
-CREATE POLICY notas_anon_insert ON public.notas FOR INSERT TO "${anonymousRole}" WITH CHECK (false);
-
-DROP POLICY IF EXISTS notas_auth_select ON public.notas;
-CREATE POLICY notas_auth_select ON public.notas FOR SELECT TO "${authenticatedRole}" USING (owner_id = current_setting('domibase.user_id', true)::uuid);
-
-DROP POLICY IF EXISTS notas_auth_insert ON public.notas;
-CREATE POLICY notas_auth_insert ON public.notas FOR INSERT TO "${authenticatedRole}" WITH CHECK (owner_id = current_setting('domibase.user_id', true)::uuid);
 
 INSERT INTO public.contactos (nombre, email, estado, notas)
 VALUES ('${seed.nombre}', '${seed.email}', '${seed.estado}', '${seed.notas}')

@@ -19,7 +19,7 @@ Detalle de decisiones, endpoints y verificación: `docs/implementation/admin-min
 - ASP.NET Core 10 / C# — un único host con áreas lógicas **Control Plane** y **Runtime Plane**.
 - PostgreSQL 18 (imagen fija `postgres:18-alpine`), un servidor compartido y una base independiente por proyecto.
 - Npgsql + EF Core para metadatos de control; Npgsql directo para el Runtime.
-- SDK TypeScript propio: `@domibase/client` (paquete provisional, `private`).
+- SDK TypeScript propio: `@domibase/client` (npm `0.1.0`, tag `latest`; ver `docs/sdk/api-contract.md`).
 - React + Vite + TypeScript en `frontend/admin`.
 - Astro 7 SSR en `examples/astro-example`.
 

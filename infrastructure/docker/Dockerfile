@@ -37,6 +37,8 @@ WORKDIR /app
 
 # .NET images provide the non-root "app" user (UID 1654).
 COPY --from=build --chown=app:app /app/publish ./
+# Named volumes for storage/backups inherit these permissions on first use.
+RUN install -d -o app -g app /app/storage /app/backups
 USER app
 
 # Secrets and connection strings are injected at runtime; nothing is baked in.

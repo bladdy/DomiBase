@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { DomiBaseError, createClient } from "../dist/index.js";
-import { BASE_URL, PUBLIC_KEY, createRecorder, errorResponse, jsonResponse } from "./helpers.js";
+import { BASE_URL, PUBLIC_KEY, createRecorder, errorResponse, jsonResponse } from "../test/helpers.js";
 
 const SESSION = {
   accessToken: "eyJhbGciOiJFUzI1NiJ9.test",

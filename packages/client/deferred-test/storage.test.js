@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createTestClient, jsonResponse, errorResponse, parseUrl, firstCall, BASE_URL, PUBLIC_KEY } from "./helpers.js";
+import { createTestClient, jsonResponse, errorResponse, parseUrl, firstCall, BASE_URL, PUBLIC_KEY } from "../test/helpers.js";
 
 const object = {
   id: "0199f000-0000-7000-8000-000000000001",

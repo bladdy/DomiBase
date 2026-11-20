@@ -61,7 +61,7 @@ Escritura mediante Control Plane con operaciones tipadas y validadas; la clave p
 | --- | --- |
 | `/` | Alta de contactos con el SDK propio desde SSR; flujo verificado E2E (INSERT / UPDATE / DELETE) |
 | `/diagnostico` | Clave inválida, clave revocada, tabla no expuesta y contexto RLS en vivo |
-| `/almacen`, `/notas`, `/login`, `/funciones`, `/tiempo-real` | Páginas heredadas de la demo; **no forman parte del producto** |
+| `/almacen`, `/notas`, `/login`, `/funciones`, `/tiempo-real` | Páginas heredadas de la demo; **retiradas del ejemplo** al reducir el SDK publicado a Fase 1 |
 
 Storage, Auth de usuarios finales, Functions y Realtime quedaron fuera del alcance y no están en los exports activos de `@domibase/client`, que se limita a `createClient`, `DomiBaseClient`, `DomiBaseError`, `QueryBuilder` y los tipos públicos de fase 1.
 

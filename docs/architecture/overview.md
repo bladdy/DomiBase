@@ -61,7 +61,7 @@ Implementado en Fase 3: advisory lock por base; pasos `roles`, `database` y `dat
 - Inventario del homelab (contenedores, redes, puertos, volúmenes, servicios) antes de desplegar.
 - Puertos y endpoints definitivos del despliegue (no asumir puertos libres; PostgreSQL no público).
 - Estrategia operativa de secretos en el homelab: el keyring de pepper y el keyring AES (`p0-4-secrets.md`) ya soportan rotación sin interrupción; queda por decidir el gestor de secretos y la ubicación del backup de las claves antes del despliegue.
-- Disponibilidad del scope npm `@domibase/client` antes de publicar.
+- Scope npm `@domibase` creado y `@domibase/client@0.1.0` publicado con tag `latest`.
 - Compatibilidad cross-platform de tooling (Windows dev / Ubuntu target); en PowerShell usar `npm.cmd`/`npx.cmd` si los scripts `.ps1` están bloqueados por firma.
 
 ## Estado (2026-11-18)

@@ -1,7 +1,12 @@
 # Desarrollo local
 
 ## Principio
-Durante el desarrollo **solo PostgreSQL se ejecuta en Docker**. La API, el SDK, los tests y el ejemplo Astro se ejecutan directamente en Windows.
+El desarrollo local admite dos modos:
+
+- **Modo clásico:** solo PostgreSQL se ejecuta en Docker; la API, el SDK, los tests y el ejemplo Astro se ejecutan directamente en Windows.
+- **Modo stack Docker (esta PC):** `docker compose up -d --build` levanta `domibase-postgres`, `domibase-api` y `domibase-admin` bajo el mismo proyecto `domibase`. Astro sigue en Windows y consume la API en `http://localhost:5080`.
+
+No se publican imágenes ni se modifica ningún otro stack de la PC.
 
 ## 1. PostgreSQL en Docker
 
@@ -121,7 +126,7 @@ Invoke-RestMethod "http://localhost:5080/rest/v1/contactos?f=email.eq.ana@exampl
 
 > Las tablas del proyecto deben crearse con `GRANT` y RLS habilitado; una tabla sin RLS no se expone (404) y una tabla sin política devuelve SELECT vacío y deniega escrituras. Las tablas se crean desde `/api/v1/projects/{id}/schema`; desde el panel se pueden explorar filas como `anon` y administrar políticas RLS con plantillas allowlisted (P2.1).
 
-La API se conecta a PostgreSQL por el puerto publicado (`127.0.0.1:5433`). El arranque falla de forma explícita si falta una cadena de conexión, el token administrativo, el pepper o la clave de secretos.
+En modo clásico la API se conecta a PostgreSQL por el puerto publicado (`127.0.0.1:5433`). En modo stack Docker usa el nombre de servicio `postgres` y el puerto interno `5432` de la red `domibase_net`; Compose sobrescribe las cadenas de conexión del `.env`. El arranque falla de forma explícita si falta una cadena de conexión, el token administrativo, el pepper o la clave de secretos.
 
 ## 4. Tests backend
 ```powershell
@@ -139,7 +144,7 @@ cmd /c npm test        # build TypeScript + 50 tests
 cmd /c npm run build
 ```
 
-- Paquete privado `@domibase/client` (ESM, TypeScript estricto, `private: true`); no se publica en npm.
+- Paquete `@domibase/client@0.1.0` publicado en npm con tag `latest`; el ejemplo Astro consume directamente el registry, sin dependencias locales ni scripts de build del SDK.
 - `createClient`, `from`, query builder inmutable, `select`/`insert`/`update`/`delete`, filtros, `order`, `limit`, `range`, `abortSignal`, `single` y `maybeSingle`.
 - `fetch` inyectable, timeout y `AbortSignal`; compatible con Node.js, SSR y navegador sin acceder a `window` al importar.
 - Los tests usan `node --test` con un `fetch` simulado; la integración contra la API real y Astro se hace en la Fase 6.
@@ -148,6 +153,23 @@ cmd /c npm run build
 En PowerShell pueden estar bloqueados `npm.ps1`/`npx.ps1`; usar `npm.cmd`/`npx.cmd` o `cmd /c npm ...`.
 
 ## 6. Ejemplo Astro (Fase 6, completado)
+
+### Opción A — stack Docker local (PostgreSQL + API + panel)
+```powershell
+# Desde la raíz del repositorio
+docker compose up -d --build
+docker compose ps
+# API: http://127.0.0.1:5080 · Panel: http://127.0.0.1:5190
+
+# Preparar proyectos, tablas/RLS, claves y .env del ejemplo
+node scripts/dev/phase-06-demo.mjs
+
+cd examples/astro-example
+cmd /c npm install
+cmd /c npm run dev        # http://localhost:4325
+```
+
+### Opción B — modo clásico (solo PostgreSQL en Docker)
 ```powershell
 # API en una terminal
 dotnet run --project backend/src/DomiBase.Api
@@ -160,8 +182,8 @@ cmd /c npm install
 cmd /c npm run dev        # http://localhost:4325
 ```
 
-- `examples/astro-example` consume la API local con `@domibase/client` en SSR (`output: "server"`, adaptador `@astrojs/node` standalone).
-- `scripts/dev/phase-06-demo.mjs` crea/reutiliza `paneles-solares` y `aislamiento-demo`, genera claves, aplica `contactos` con RLS, siembra filas y escribe `examples/astro-example/.env` (sin imprimir secretos).
+- `examples/astro-example` consume la API local con `@domibase/client@0.1.0` desde npm en SSR (`output: "server"`, adaptador `@astrojs/node` standalone); cubre solo la API Fase 1.
+- `scripts/dev/phase-06-demo.mjs` crea/reutiliza `paneles-solares` y `aislamiento-demo`, genera claves, aplica `contactos` con RLS, siembra filas y escribe `examples/astro-example/.env` (sin imprimir secretos). No crea bucket ni función de demo.
 - `scripts/dev/phase-06-verify-astro.mjs` verifica los formularios y la página `/diagnostico` contra el servidor en ejecución.
 - Puerto fijo **4325**: el `4321` por defecto puede estar ocupado por otra aplicación local.
 - Las claves viven solo en el servidor de Astro (`astro:env/server`, `access: "secret"`); nunca en el navegador ni con prefijo `PUBLIC_`.
